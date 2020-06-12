@@ -35,10 +35,37 @@ def run_command(cmd : str):
         pass
 
     def _add():
+        """
+        Adds values on the stack according to the stack counter.
+        This requires:
+            The global stack counter > 0
+            The global stack having items
+            The global arg having at least one value in it;
+            This is where the result will be stored. If there
+            is more than one value, the last one added will be
+            used.
+        This modifies:
+            The global stack
+            The global stack counter
+            The variable (if present) in the global arg
+        """
         result = 0
         while _GLOBALS["sc"] > 0:
-                result += _GLOBALS["stack"][::-1].pop(0)
+                temp = _GLOBALS["stack"][::-1].pop(0)
+                print(f'Popped {temp} off the stack')
+                result += temp
                 _GLOBALS["sc"] -= 1
+        print(f'Result: {result}')
+        # Value in args is destination
+        print(f'Args: {_GLOBALS["args"]}')
+        if len(_GLOBALS["args"]) > 0:
+            arg = _GLOBALS["args"][::-1].pop(0)
+            cmd = ['set', arg, result]
+            var = cmd[1]
+            val = cmd[2]
+            _GLOBALS["vars"][var] = val
+            print(f'>> Var {var} set to {val}. {var} = {_GLOBALS["vars"][var]}')
+                
         return
 
     def _sub():
@@ -73,7 +100,7 @@ def tokenize(contents: list) -> None:
         #print(f'\n--------\nProcessing line {i}\n--------')
         line = contents[i]
         temp = line.split(" ")
-        #print(f'temp: {temp}')
+        print(f'temp: {temp}')
         appended = False
         for val in temp:
             if "," in val:
@@ -81,7 +108,7 @@ def tokenize(contents: list) -> None:
                 if len(val) > 1:
                     # Separate , from whatever it is on
                     index = 0
-                    #print(f'Inner val: {val[index]}')
+                    print(f'Inner val: {val[index]}')
                     while index <= len(val) and val[index] != ",":
                         tokens.append(val[index])
                         index += 1
@@ -94,9 +121,22 @@ def tokenize(contents: list) -> None:
                         tokens.append(val[:-1])
                         tokens.append(val[-1])
                     else:
+                        # Holds digits if a multi-digit value
+                        # is present
+                        full_digit = []
                         for inner_val in val:
+                            print(f'Inner val: {inner_val}')
                             if '\n' not in inner_val:
-                                tokens.append(inner_val)
+                                if inner_val.isdigit():
+                                    full_digit.append(inner_val)
+                                else:
+                                    # Check if we got a full digit
+                                    if full_digit != []:
+                                        print(f'full_digit: {full_digit}')
+                                        print(f'Appended full digit')
+                                        tokens.append("".join(full_digit))
+                                    tokens.append(inner_val)
+                        
                 else:
                     # By itself, just append
                     tokens.append(';')
@@ -144,6 +184,7 @@ def execute(tokens : list) -> None:
                 _GLOBALS["stack"].append(temp)
                 _GLOBALS["sc"] += 1
                 run_command("out")
+                # Restore the stack counter
                 _GLOBALS["sc"] = inital_sc
             elif token in ["set", "add", "sub"]:
                 if token == "set":
@@ -157,7 +198,7 @@ def execute(tokens : list) -> None:
                     else:
                         val = _GLOBALS["vars"][val]
                     _GLOBALS["vars"][var] = val
-                    #print(f'>> Var {var} set to {val}. {var} = {_GLOBALS["vars"][var]}')
+                    print(f'>> Var {var} set to {val}. {var} = {_GLOBALS["vars"][var]}')
                 else:
                     #print(">> Add command")
                     # Add command puts result on top of stack
@@ -196,6 +237,8 @@ def execute(tokens : list) -> None:
                     _GLOBALS["stack"].append(val1)
                     _GLOBALS["sc"] += 1
                     #print(f'>> Stack changed. Added {result}')
+                    # Put first value into args
+                    _GLOBALS["args"].append(name1)
                     run_command("add")
                     _GLOBALS["sc"] = inital_sc
         else:

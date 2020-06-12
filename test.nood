@@ -1,4 +1,4 @@
 set a, 2;
 set b, 4;
-add a, b;
+add a, 10000;
 out a;
